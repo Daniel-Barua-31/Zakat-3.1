@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
+import 'package:zakat/pages/zakat_saved.dart';
 import 'home_page.dart';
 import 'save_page.dart';
 
@@ -12,17 +13,54 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   int _selectedIndex = 0;
-  final List<Widget> _pages = [
-    HomePage(
-      selectedCurrency: '',
-    ),
-    SavePage(
-      savedDataList: [],
-    )
-  ];
+  List<Map<String, dynamic>> savedDataList = [];
+  List<Map<String, dynamic>> _zakatSavedDataList = [];
+
+  void addSavedData(Map<String, dynamic> data) {
+    setState(() {
+      savedDataList.add(data);
+    });
+  }
+
+  void _saveZakatData(Map<String, dynamic> zakatData) {
+    setState(() {
+      _zakatSavedDataList.add(zakatData);
+    });
+  }
+
+  void _updateZakatData(int index, Map<String, dynamic> updatedData) {
+    setState(() {
+      _zakatSavedDataList[index] = updatedData;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final List<Widget> _pages = [
+      HomePage(
+        selectedCurrency: '',
+        availableCurrencies: [],
+        onSave: addSavedData,
+        onSaveZakat: (zakatData) {
+          setState(() {
+            _zakatSavedDataList.add(zakatData);
+          });
+        },
+      ),
+      SavePage(
+        savedDataList: savedDataList,
+        onEdit: (index, updatedData) {
+          setState(() {
+            savedDataList[index] = updatedData;
+          });
+        },
+      ),
+      ZakatSaved(
+        zakatDataList: _zakatSavedDataList,
+        onUpdateZakat: _updateZakatData,
+      ),
+    ];
+
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
@@ -47,8 +85,18 @@ class _MainPageState extends State<MainPage> {
               });
             },
             tabs: const [
-              GButton(icon: Icons.home, text: 'Home'),
-              GButton(icon: Icons.save, text: 'Save'),
+              GButton(
+                icon: Icons.home,
+                text: 'Home',
+              ),
+              GButton(
+                icon: Icons.save,
+                text: 'Save',
+              ),
+              GButton(
+                icon: Icons.account_circle,
+                text: 'Profile',
+              )
             ],
           ),
         ),

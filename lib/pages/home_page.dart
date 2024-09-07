@@ -1,16 +1,35 @@
-// ignore_for_file: prefer_const_constructors
+// ignore_for_file: prefer_const_constructors, prefer_conditional_assignment
 
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
-import 'package:google_nav_bar/google_nav_bar.dart';
 import 'package:http/http.dart' as http;
-
+import 'package:zakat/pages/process_page.dart';
+import 'package:zakat/pages/save_page.dart';
+import 'package:zakat/pages/select_currency.dart';
+import 'package:zakat/utils/routes.dart';
 import '../utils/validation.dart';
+import 'package:intl/intl.dart';
 
 class HomePage extends StatefulWidget {
-  HomePage({super.key, required String selectedCurrency});
+  final String? initialCurrency;
+  final String? selectedCurrency;
+  final bool editMode;
+  final Map<String, dynamic>? editData;
+  final Function(Map<String, dynamic>)? onSave;
+  final List<String> availableCurrencies;
+  final Function(Map<String, dynamic>)? onSaveZakat;
+
+  HomePage({
+    Key? key,
+    required this.selectedCurrency,
+    this.initialCurrency,
+    this.editMode = false,
+    this.editData,
+    this.onSave,
+    required this.onSaveZakat,
+    required this.availableCurrencies,
+  }) : super(key: key);
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -38,10 +57,12 @@ class _HomePageState extends State<HomePage> {
   var expenseTotal;
   var res2;
   var res3;
-  var goldPrice = 650657820;
   var zakat;
   bool isLoading = false;
   bool isZakatEligible = true;
+
+  late String _selectedCurrency;
+  bool _initialized = false;
 
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -50,19 +71,22 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       selectedCurrency = currency;
     });
+
+    if (!_initialized) {
+      _initializeCurrency();
+      _initialized = true;
+    }
   }
 
   Future<double> fetchUsdToCurrencyRate(
       String apiKey, String targetedCurrency) async {
     final String url = 'https://v6.exchangerate-api.com/v6/$apiKey/latest/USD';
 
-    // print(targetedCurrency);
-
     final response = await http.get(Uri.parse(url));
 
     if (response.statusCode == 200) {
       final Map<String, dynamic> data = jsonDecode(response.body);
-      print(data);
+      // print(data);
       double usdToBdt = data['conversion_rates']['$targetedCurrency'];
       return usdToBdt;
     } else {
@@ -74,7 +98,7 @@ class _HomePageState extends State<HomePage> {
     var response = await http.get(
       Uri.https('www.goldapi.io', '/api/XAU/USD'),
       headers: {
-        'x-access-token': 'goldapi-cxjkslyiuam57-io',
+        'x-access-token': 'goldapi-bjms19m0cp7xlt-io',
       },
     );
 
@@ -99,7 +123,7 @@ class _HomePageState extends State<HomePage> {
     var response = await http.get(
       Uri.https('www.goldapi.io', '/api/XAG/USD'),
       headers: {
-        'x-access-token': 'goldapi-cxjkslyiuam57-io',
+        'x-access-token': 'goldapi-bjms19m0cp7xlt-io',
       },
     );
 
@@ -129,12 +153,17 @@ class _HomePageState extends State<HomePage> {
 
     double currency = await fetchUsdToCurrencyRate(apiKey, selectedCurrency!);
 
+    print('calculate Zakat: $selectedCurrency');
+
     try {
-      res2 = assetsTotal - expenseTotal;
+      res2 = assetsTotal! - expenseTotal!;
       var targetGoldPrice = await getGoldPrice();
       var validGoldPrice = targetGoldPrice * 87.48 * currency;
       var targetSilverPrice = await getSilverPrice();
       var validSilverPrice = targetSilverPrice * 612.36 * currency;
+
+      totalAssets();
+      totalExpenses();
 
       print("612.36 gram Silver Price: $validSilverPrice");
       print("87.48 gram Gold Price  : $validGoldPrice");
@@ -164,37 +193,37 @@ class _HomePageState extends State<HomePage> {
 
   void totalExpenses() {
     setState(() {
-      var intExpenses = double.tryParse(_expenses.text) ?? 0;
-      var intShortTermDebts = double.tryParse(_shortTermDebts.text) ?? 0;
-      var intOtherExpenses = double.tryParse(_otherExpenses.text) ?? 0;
-      expenseTotal = intExpenses + intShortTermDebts + intOtherExpenses;
+      expenseTotal = [_expenses, _shortTermDebts, _otherExpenses]
+          .map((controller) => double.tryParse(controller.text) ?? 0)
+          .reduce((a, b) => a + b);
     });
   }
 
   void totalAssets() {
     setState(() {
-      var intCash = double.tryParse(_cash.text) ?? 0;
-      var intGoldOwned = double.tryParse(_goldOwned.text) ?? 0;
-      var intSilverOwned = double.tryParse(_silverOwned.text) ?? 0;
-      var intInvestement = double.tryParse(_investment.text) ?? 0;
-      var intMoneyOwed = double.tryParse(_moneyOwed.text) ?? 0;
-      var intGoods = double.tryParse(_goods.text) ?? 0;
-      var intOtherAssets = double.tryParse(_othersAssets.text) ?? 0;
-
-      assetsTotal = (intCash +
-          intGoldOwned +
-          intSilverOwned +
-          intInvestement +
-          intMoneyOwed +
-          intGoods +
-          intOtherAssets);
+      assetsTotal = [
+        _cash,
+        _goldOwned,
+        _silverOwned,
+        _investment,
+        _moneyOwed,
+        _goods,
+        _othersAssets
+      ]
+          .map((controller) => double.tryParse(controller.text) ?? 0)
+          .reduce((a, b) => a + b);
     });
   }
+
 
   @override
   void initState() {
     super.initState();
-
+    selectedCurrency = widget.selectedCurrency;
+    print("initState: $selectedCurrency");
+    if (widget.editMode && widget.editData != null) {
+      _loadEditData();
+    }
     _cash.addListener(totalAssets);
     _goldOwned.addListener(totalAssets);
     _silverOwned.addListener(totalAssets);
@@ -216,7 +245,7 @@ class _HomePageState extends State<HomePage> {
   String? _investmentField;
   String? _moneyOwedField;
   String? _goodsField;
-  String? ohterAssetsField;
+  String? _otherAssetsField;
 
   String? _expensesField;
   String? _shortTermDebtsField;
@@ -233,6 +262,118 @@ class _HomePageState extends State<HomePage> {
   String? _expensesFieldError;
   String? _shortTermDebtsFieldError;
   String? _otherExpensesFieldError;
+
+  void _initializeCurrency() {
+    final String? routeCurrency =
+        ModalRoute.of(context)?.settings.arguments as String?;
+
+    if (widget.editMode &&
+        widget.editData != null &&
+        widget.editData!['currency'] != null) {
+      _selectedCurrency = widget.editData!['currency'];
+    } else if (routeCurrency != null &&
+        widget.availableCurrencies.contains(routeCurrency)) {
+      _selectedCurrency = routeCurrency;
+    } else if (widget.initialCurrency != null &&
+        widget.availableCurrencies.contains(widget.initialCurrency)) {
+      _selectedCurrency = widget.initialCurrency!;
+    } else if (widget.availableCurrencies.isNotEmpty) {
+      _selectedCurrency = widget.availableCurrencies.first;
+    } else {
+      _selectedCurrency = 'USD';
+    }
+
+    if (widget.editMode && widget.editData != null) {
+      _loadEditData();
+    }
+  }
+
+  void _loadEditData() {
+    setState(() {
+      _cash.text = widget.editData!['cash'].toString() ?? '';
+      _goldOwned.text = widget.editData!['goldOwned'].toString() ?? '';
+      _silverOwned.text = widget.editData!['silverOwned'].toString() ?? '';
+      _investment.text = widget.editData!['investment'].toString() ?? '';
+      _moneyOwed.text = widget.editData!['moneyOwed'].toString() ?? '';
+      _goods.text = widget.editData!['goods'].toString();
+      _othersAssets.text = widget.editData!['othersAssets'].toString() ?? '';
+
+      _expenses.text = widget.editData!['expense'].toString() ?? '';
+      _shortTermDebts.text =
+          widget.editData!['shortTermDebts'].toString() ?? '';
+      _otherExpenses.text = widget.editData!['otherExpenses'].toString() ?? '';
+
+      if (widget.editData!.containsKey('currency') &&
+          widget.editData!['currency'] != null) {
+        selectedCurrency = widget.editData!['currency'];
+      }
+      print("Loaded currency: $selectedCurrency");
+    });
+  }
+
+
+  void _zakatProcess() {
+    if (zakat != null && selectedCurrency != null) {
+      final zakatData = {
+        'zakat': zakat,
+        'currency': selectedCurrency,
+      };
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ProcessPage(
+            onSaveZakatProcess: widget.onSaveZakat,
+          ),
+          settings: RouteSettings(arguments: zakatData),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Error: Unable to process Zakat. Please try again.')),
+      );
+    }
+  }
+
+  void _saveCalculation() {
+    if (zakat != null && selectedCurrency != null) {
+      final now = DateTime.now();
+      final formattedDate = DateFormat('yyyy-MM-dd HH:mm').format(now);
+      final calculationData = {
+        'date': formattedDate,
+        'zakat': zakat,
+        'currency': selectedCurrency,
+        'assets': assetsTotal,
+        'expenses': expenseTotal,
+        'cash': _cashField,
+        'goldOwned': _goldOwnedField,
+        'silverOwned': _silverOwnedField,
+        'investment': _investmentField,
+        'moneyOwed': _moneyOwedField,
+        'goods': _goodsField,
+        'othersAssets': _otherAssetsField,
+        'expense': _expensesField,
+        'shortTermDebts': _shortTermDebtsField,
+        'otherExpenses': _otherExpensesField,
+      };
+
+      print(
+          "Saving calculation with currency: $selectedCurrency"); // Debug print
+
+      if (widget.editMode && widget.onSave != null) {
+        widget.onSave!(calculationData);
+        Navigator.pop(context);
+      } else if (widget.onSave != null) {
+        widget.onSave!(calculationData);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Calculation saved successfully!')),
+        );
+      }
+    } else {
+      print("Error: zakat or selectedCurrency is null"); // Debug print
+    }
+  }
 
   void _validateCash(String value) {
     setState(() {
@@ -503,7 +644,7 @@ class _HomePageState extends State<HomePage> {
                         controller: _othersAssets,
                         onChanged: (value) {
                           _validateOtherAssets(value);
-                          _otherExpensesField = value;
+                          _otherAssetsField = value;
                         },
                         decoration: InputDecoration(
                           hintText: "Enter a amount",
@@ -678,7 +819,7 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     Expanded(
                       child: GestureDetector(
-                        onTap: () => {},
+                        onTap: _saveCalculation,
                         child: Container(
                           padding: EdgeInsets.all(12),
                           decoration: BoxDecoration(
@@ -722,6 +863,28 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ],
+                ),
+                SizedBox(
+                  height: 20,
+                ),
+                GestureDetector(
+                  onTap: _zakatProcess,
+                  child: Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                        color: Color.fromARGB(255, 236, 200, 81),
+                        borderRadius: BorderRadius.circular(12)),
+                    child: Center(
+                      child: Text(
+                        "Procecs",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
                 SizedBox(
                   height: 20,

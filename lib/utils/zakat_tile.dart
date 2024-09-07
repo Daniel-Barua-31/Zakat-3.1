@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 
-class SaveTile extends StatelessWidget {
-  final String date;
+class ZakatTile extends StatelessWidget {
+  final String sessionYear;
   final double zakat;
   final String currency;
-  final VoidCallback onEdit;
+  final double remaining;
+  final VoidCallback? onEdit;
+  final double editThreshold;
 
-  const SaveTile({
+  const ZakatTile({
     Key? key,
-    required this.date,
-    required this.zakat,
     required this.currency,
-    required this.onEdit,
+    required this.zakat,
+    required this.sessionYear,
+    required this.remaining,
+    this.onEdit,
+    this.editThreshold = 0.02,
   }) : super(key: key);
 
   @override
@@ -31,22 +35,28 @@ class SaveTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Date: $date',
+                  'Session: $sessionYear',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                Text('Zakat: ${zakat.toStringAsFixed(2)} $currency'),
+                Text(
+                    'Zakat: ${zakat.toStringAsFixed(2)} $currency, Ramaining: ${remaining.toStringAsFixed(2)} $currency'),
               ],
             ),
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: onEdit,
-            ),
+            if (remaining > editThreshold && onEdit != null)
+              ElevatedButton(
+                onPressed: onEdit,
+                child: Text('Edit'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                ),
+              ),
           ],
         ),
       ),
     );
+    ;
   }
 }

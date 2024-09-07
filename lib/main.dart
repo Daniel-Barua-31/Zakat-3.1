@@ -1,5 +1,9 @@
+// ignore_for_file: prefer_const_constructors, avoid_types_as_parameter_names
 
 import 'package:flutter/material.dart';
+import 'package:zakat/pages/process_page.dart';
+import 'package:zakat/pages/select_session.dart';
+import 'package:zakat/pages/zakat_saved.dart';
 
 import 'pages/home_page.dart';
 import 'pages/intro_page.dart';
@@ -23,10 +27,26 @@ class MyApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         MyRoutes.IntroRoute: (context) => IntroPage(),
-        MyRoutes.HomeRoute: (context) => HomePage(selectedCurrency: '',),
-        MyRoutes.SaveRoute: (context) => SavePage(savedDataList: [],),
-        MyRoutes.MainRoute : (context) => MainPage(),
+        MyRoutes.HomeRoute: (context) => HomePage(
+              selectedCurrency: '',
+              availableCurrencies: [],
+              onSaveZakat: null,
+            ),
+        MyRoutes.SaveRoute: (context) => SavePage(
+              savedDataList: [],
+              onEdit: (index, updatedData) {},
+            ),
+        MyRoutes.MainRoute: (context) => MainPage(),
         MyRoutes.SelectedRoute: (context) => SelectCurrency(),
+        MyRoutes.ZakatSave: (context) => ZakatSaved(
+              zakatDataList: [],
+              onUpdateZakat: (int index, Map<String, dynamic> updatedData) {
+                // Implement the update logic here if needed
+                // For now, we'll leave it empty
+              },
+            ),
+        MyRoutes.SelectedSession: (context) => SelectSession(),
+        MyRoutes.Process: (context) => ProcessPage(),
       },
     );
   }
