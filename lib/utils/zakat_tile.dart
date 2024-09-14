@@ -84,6 +84,15 @@ class ZakatTile extends StatelessWidget {
                       style: TextStyle(color: Colors.white),
                     ),
                   ),
+                )
+              else
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Icon(
+                    Icons.check_circle,
+                    color: Colors.green[400],
+                    size: 40.0,
+                  ),
                 ),
             ],
           ),

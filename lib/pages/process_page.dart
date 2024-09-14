@@ -23,7 +23,9 @@ class _ProcessPageState extends State<ProcessPage> {
   List<Map<String, dynamic>> zakatDataList = [];
   List<Map<String, dynamic>> entries = [];
 
-  String dropdownValue = '2023-2024';
+  late String dropdownValue;
+  List<String> sessionYears = [];
+
   bool changedButton = false;
 
   TextEditingController instituteController = TextEditingController();
@@ -34,9 +36,19 @@ class _ProcessPageState extends State<ProcessPage> {
   @override
   void initState() {
     super.initState();
-    print("ProcessPage initState - editIndex: ${widget.editIndex}");
+    _generateSessionYears();
+    // print("ProcessPage initState - editIndex: ${widget.editIndex}");
     _initializeData();
   } // recent added! 10 PM
+
+  void _generateSessionYears() {
+    final currentYear = DateTime.now().year;
+    for (int i = 0; i < 3; i++) {
+      String session = '${currentYear - i - 1}-${currentYear - i}';
+      sessionYears.add(session);
+    }
+    dropdownValue = sessionYears.first;
+  }
 
   void _initializeData() {
     if (widget.initialZakatData != null) {
@@ -155,12 +167,8 @@ class _ProcessPageState extends State<ProcessPage> {
                           dropdownValue = newValue!;
                         });
                       },
-                      items: [
-                        '2020-2021',
-                        '2021-2022',
-                        '2022-2023',
-                        '2023-2024',
-                      ].map<DropdownMenuItem<String>>((String value) {
+                      items: sessionYears
+                          .map<DropdownMenuItem<String>>((String value) {
                         return DropdownMenuItem<String>(
                           value: value,
                           child: Padding(
@@ -168,7 +176,22 @@ class _ProcessPageState extends State<ProcessPage> {
                             child: Text(value),
                           ),
                         );
-                      }).toList(),
+                      }).toList(), // added on 3:11
+
+                      // items: [
+                      //   '2020-2021',
+                      //   '2021-2022',
+                      //   '2022-2023',
+                      //   '2023-2024',
+                      // ].map<DropdownMenuItem<String>>((String value) {
+                      //   return DropdownMenuItem<String>(
+                      //     value: value,
+                      //     child: Padding(
+                      //       padding: const EdgeInsets.symmetric(vertical: 8),
+                      //       child: Text(value),
+                      //     ),
+                      //   );
+                      // }).toList(), // commented on 3:11
                       dropdownColor: Colors.white,
                       isExpanded: true,
                     ),

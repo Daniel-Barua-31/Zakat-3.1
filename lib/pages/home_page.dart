@@ -173,8 +173,8 @@ class _HomePageState extends State<HomePage> {
       totalAssets();
       totalExpenses();
 
-      print("612.36 gram Silver Price: $validSilverPrice");
-      print("87.48 gram Gold Price  : $validGoldPrice");
+      // print("612.36 gram Silver Price: $validSilverPrice");
+      // print("87.48 gram Gold Price  : $validGoldPrice");
 
       double zakatAmount = 0;
       bool isEligible = false;
