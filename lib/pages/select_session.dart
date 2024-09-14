@@ -136,6 +136,5 @@ class _SelectSessionState extends State<SelectSession> {
         ),
       ),
     );
-    ;
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 
 class ZakatTile extends StatelessWidget {
   final String sessionYear;
@@ -6,57 +7,88 @@ class ZakatTile extends StatelessWidget {
   final String currency;
   final double remaining;
   final VoidCallback? onEdit;
+  final Function(BuildContext)? onDelete;
   final double editThreshold;
 
   const ZakatTile({
-    Key? key,
+    super.key,
     required this.currency,
     required this.zakat,
     required this.sessionYear,
     required this.remaining,
     this.onEdit,
+    this.onDelete,
     this.editThreshold = 0.02,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(24.0),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.green.shade400,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Slidable(
+        endActionPane: ActionPane(
+          motion: const StretchMotion(),
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Session: $sessionYear',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                    'Zakat: ${zakat.toStringAsFixed(2)} $currency, Ramaining: ${remaining.toStringAsFixed(2)} $currency'),
-              ],
-            ),
-            if (remaining > editThreshold && onEdit != null)
-              ElevatedButton(
-                onPressed: onEdit,
-                child: Text('Edit'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
+            SlidableAction(
+              onPressed: onDelete,
+              icon: Icons.delete,
+              backgroundColor: Colors.red,
+              borderRadius: BorderRadius.circular(12),
+            )
+          ],
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.blueGrey[100],
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Session: $sessionYear',
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-          ],
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    'Zakat: ${zakat.toStringAsFixed(2)} $currency',
+                    style: const TextStyle(color: Colors.black),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Remaining: ${remaining.toStringAsFixed(2)} $currency',
+                    style: const TextStyle(color: Colors.black),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (remaining > editThreshold && onEdit != null)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ElevatedButton(
+                    onPressed: onEdit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green[400],
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                    ),
+                    child: const Text(
+                      'Edit',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
-    ;
   }
 }

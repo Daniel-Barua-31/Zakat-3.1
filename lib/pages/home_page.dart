@@ -2,12 +2,11 @@
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
+import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:zakat/data/database.dart';
 import 'package:zakat/pages/process_page.dart';
-import 'package:zakat/pages/save_page.dart';
-import 'package:zakat/pages/select_currency.dart';
-import 'package:zakat/utils/routes.dart';
 import '../utils/validation.dart';
 import 'package:intl/intl.dart';
 
@@ -20,8 +19,8 @@ class HomePage extends StatefulWidget {
   final List<String> availableCurrencies;
   final Function(Map<String, dynamic>)? onSaveZakat;
 
-  HomePage({
-    Key? key,
+  const HomePage({
+    super.key,
     required this.selectedCurrency,
     this.initialCurrency,
     this.editMode = false,
@@ -29,13 +28,14 @@ class HomePage extends StatefulWidget {
     this.onSave,
     required this.onSaveZakat,
     required this.availableCurrencies,
-  }) : super(key: key);
+  });
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
+  final _boxZakat = Hive.box('boxZakat');
   final TextEditingController _cash = TextEditingController();
   final TextEditingController _goldOwned = TextEditingController();
 
@@ -51,19 +51,19 @@ class _HomePageState extends State<HomePage> {
 
   List<Map<String, dynamic>> savedDataList = [];
 
+  ZakatCalculationDataBase db = ZakatCalculationDataBase();
+
   String? selectedCurrency;
-  var res1;
-  var assetsTotal;
-  var expenseTotal;
-  var res2;
-  var res3;
-  var zakat;
+  double? assetsTotal;
+  double? expenseTotal;
+  double? zakat;
   bool isLoading = false;
   bool isZakatEligible = true;
 
   late String _selectedCurrency;
   bool _initialized = false;
 
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final String? currency =
@@ -86,8 +86,10 @@ class _HomePageState extends State<HomePage> {
 
     if (response.statusCode == 200) {
       final Map<String, dynamic> data = jsonDecode(response.body);
-      // print(data);
-      double usdToBdt = data['conversion_rates']['$targetedCurrency'];
+      var rate = data['conversion_rates'][targetedCurrency];
+
+      double usdToBdt = (rate is int) ? rate.toDouble() : rate;
+
       return usdToBdt;
     } else {
       throw Exception('Failed to load exchange rates');
@@ -98,7 +100,7 @@ class _HomePageState extends State<HomePage> {
     var response = await http.get(
       Uri.https('www.goldapi.io', '/api/XAU/USD'),
       headers: {
-        'x-access-token': 'goldapi-bjms19m0cp7xlt-io',
+        'x-access-token': 'goldapi-5n1qxsm0ux1t1t-io',
       },
     );
 
@@ -113,6 +115,9 @@ class _HomePageState extends State<HomePage> {
         print("price_gram_24k key not found in JSON response");
         throw Exception("price_gram_24k key not found");
       }
+    } else if (response.statusCode == 403) {
+      print("Error: 403 Forbidden. Returning default gold price.");
+      return 80.96;
     } else {
       print("Error: ${response.statusCode}");
       throw Exception("Failed to fetch gold price");
@@ -123,7 +128,7 @@ class _HomePageState extends State<HomePage> {
     var response = await http.get(
       Uri.https('www.goldapi.io', '/api/XAG/USD'),
       headers: {
-        'x-access-token': 'goldapi-bjms19m0cp7xlt-io',
+        'x-access-token': 'goldapi-5n1qxsm0ux1t1t-io',
       },
     );
 
@@ -138,6 +143,9 @@ class _HomePageState extends State<HomePage> {
         print("price_gram_24k key not found in JSON response");
         throw Exception("price_gram_24k key not found");
       }
+    } else if (response.statusCode == 403) {
+      print("Error: 403 Forbidden. Returning default gold price.");
+      return 0.92;
     } else {
       print("Error: ${response.statusCode}");
       throw Exception("Failed to fetch gold price");
@@ -156,11 +164,11 @@ class _HomePageState extends State<HomePage> {
     print('calculate Zakat: $selectedCurrency');
 
     try {
-      res2 = assetsTotal! - expenseTotal!;
-      var targetGoldPrice = await getGoldPrice();
-      var validGoldPrice = targetGoldPrice * 87.48 * currency;
-      var targetSilverPrice = await getSilverPrice();
-      var validSilverPrice = targetSilverPrice * 612.36 * currency;
+      double res2 = assetsTotal! - expenseTotal!;
+      double targetGoldPrice = await getGoldPrice();
+      double validGoldPrice = targetGoldPrice * 87.48 * currency;
+      double targetSilverPrice = await getSilverPrice();
+      double validSilverPrice = targetSilverPrice * 612.36 * currency;
 
       totalAssets();
       totalExpenses();
@@ -215,7 +223,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-
   @override
   void initState() {
     super.initState();
@@ -224,17 +231,21 @@ class _HomePageState extends State<HomePage> {
     if (widget.editMode && widget.editData != null) {
       _loadEditData();
     }
-    _cash.addListener(totalAssets);
-    _goldOwned.addListener(totalAssets);
-    _silverOwned.addListener(totalAssets);
-    _investment.addListener(totalAssets);
-    _moneyOwed.addListener(totalAssets);
-    _goods.addListener(totalAssets);
-    _othersAssets.addListener(totalAssets);
+    _addListenersToControllers();
+  }
 
-    _expenses.addListener(totalExpenses);
-    _shortTermDebts.addListener(totalExpenses);
-    _otherExpenses.addListener(totalExpenses);
+  void _addListenersToControllers() {
+    _cash.addListener(() => _updateTotals());
+    _goldOwned.addListener(() => _updateTotals());
+    _silverOwned.addListener(() => _updateTotals());
+    _investment.addListener(() => _updateTotals());
+    _moneyOwed.addListener(() => _updateTotals());
+    _goods.addListener(() => _updateTotals());
+    _othersAssets.addListener(() => _updateTotals());
+
+    _expenses.addListener(() => _updateTotals());
+    _shortTermDebts.addListener(() => _updateTotals());
+    _otherExpenses.addListener(() => _updateTotals());
   }
 
   final _formkey = GlobalKey<FormFieldState>();
@@ -290,42 +301,75 @@ class _HomePageState extends State<HomePage> {
 
   void _loadEditData() {
     setState(() {
-      _cash.text = widget.editData!['cash'].toString() ?? '';
-      _goldOwned.text = widget.editData!['goldOwned'].toString() ?? '';
-      _silverOwned.text = widget.editData!['silverOwned'].toString() ?? '';
-      _investment.text = widget.editData!['investment'].toString() ?? '';
-      _moneyOwed.text = widget.editData!['moneyOwed'].toString() ?? '';
-      _goods.text = widget.editData!['goods'].toString();
-      _othersAssets.text = widget.editData!['othersAssets'].toString() ?? '';
+      _cash.text = widget.editData!['cash']?.toString() ?? '';
+      _goldOwned.text = widget.editData!['goldOwned']?.toString() ?? '';
+      _silverOwned.text = widget.editData!['silverOwned']?.toString() ?? '';
+      _investment.text = widget.editData!['investment']?.toString() ?? '';
+      _moneyOwed.text = widget.editData!['moneyOwed']?.toString() ?? '';
+      _goods.text = widget.editData!['goods']?.toString() ?? '';
+      _othersAssets.text = widget.editData!['othersAssets']?.toString() ?? '';
 
-      _expenses.text = widget.editData!['expense'].toString() ?? '';
+      _expenses.text = widget.editData!['expense']?.toString() ?? '';
       _shortTermDebts.text =
-          widget.editData!['shortTermDebts'].toString() ?? '';
-      _otherExpenses.text = widget.editData!['otherExpenses'].toString() ?? '';
+          widget.editData!['shortTermDebts']?.toString() ?? '';
+      _otherExpenses.text = widget.editData!['otherExpenses']?.toString() ?? '';
 
-      if (widget.editData!.containsKey('currency') &&
-          widget.editData!['currency'] != null) {
-        selectedCurrency = widget.editData!['currency'];
-      }
-      print("Loaded currency: $selectedCurrency");
+      selectedCurrency = widget.editData!['currency'] ?? selectedCurrency;
+
+      assetsTotal = widget.editData!['assets'] ?? 0.0;
+      expenseTotal = widget.editData!['expenses'] ?? 0.0;
+      // zakat = widget.editData!['zakat'] ?? 0.0;
     });
+    // _calculateZakat();
+    calculateZakat();
+
+    _updateTotals();
   }
 
+  void _updateTotals() {
+    totalAssets();
+    totalExpenses();
+    if (assetsTotal != null && expenseTotal != null) {
+      // calculateZakat();
+    }
+  }
 
   void _zakatProcess() {
     if (zakat != null && selectedCurrency != null) {
       final zakatData = {
         'zakat': zakat,
         'currency': selectedCurrency,
+        'editMode': widget.editMode,
+        'editIndex': widget.editMode ? widget.editData!['editIndex'] : null,
+        'assets': assetsTotal,
+        'expenses': expenseTotal,
+        'cash': _cash.text,
+        'goldOwned': _goldOwned.text,
+        'silverOwned': _silverOwned.text,
+        'investment': _investment.text,
+        'moneyOwed': _moneyOwed.text,
+        'goods': _goods.text,
+        'othersAssets': _othersAssets.text,
+        'expense': _expenses.text,
+        'shortTermDebts': _shortTermDebts.text,
+        'otherExpenses': _otherExpenses.text,
       };
+
+      _saveCalculation();
+
+      if (widget.onSaveZakat != null) {
+        widget.onSaveZakat!(zakatData);
+      }
 
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => ProcessPage(
             onSaveZakatProcess: widget.onSaveZakat,
+            initialZakatData: zakatData,
+            editIndex: widget.editMode ? widget.editData!['editIndex'] : null,
           ),
-          settings: RouteSettings(arguments: zakatData),
+          // settings: RouteSettings(arguments: zakatData),// recent commented!
         ),
       );
     } else {
@@ -337,7 +381,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _saveCalculation() {
-    if (zakat != null && selectedCurrency != null) {
+    if (selectedCurrency != null) {
       final now = DateTime.now();
       final formattedDate = DateFormat('yyyy-MM-dd HH:mm').format(now);
       final calculationData = {
@@ -346,32 +390,61 @@ class _HomePageState extends State<HomePage> {
         'currency': selectedCurrency,
         'assets': assetsTotal,
         'expenses': expenseTotal,
-        'cash': _cashField,
-        'goldOwned': _goldOwnedField,
-        'silverOwned': _silverOwnedField,
-        'investment': _investmentField,
-        'moneyOwed': _moneyOwedField,
-        'goods': _goodsField,
-        'othersAssets': _otherAssetsField,
-        'expense': _expensesField,
-        'shortTermDebts': _shortTermDebtsField,
-        'otherExpenses': _otherExpensesField,
+        'cash': _cash.text,
+        'goldOwned': _goldOwned.text,
+        'silverOwned': _silverOwned.text,
+        'investment': _investment.text,
+        'moneyOwed': _moneyOwed.text,
+        'goods': _goods.text,
+        'othersAssets': _othersAssets.text,
+        'expense': _expenses.text,
+        'shortTermDebts': _shortTermDebts.text,
+        'otherExpenses': _otherExpenses.text,
+        'editIndex': widget.editMode ? widget.editData!['editIndex'] : null,
       };
 
-      print(
-          "Saving calculation with currency: $selectedCurrency"); // Debug print
+      bool saveSuccessful = false;
 
-      if (widget.editMode && widget.onSave != null) {
+      if (widget.editMode) {
         widget.onSave!(calculationData);
-        Navigator.pop(context);
-      } else if (widget.onSave != null) {
-        widget.onSave!(calculationData);
+        if (widget.onSave != null) {
+          widget.onSave!(calculationData);
+          saveSuccessful = true;
+        }
+      } else {
+        _boxZakat.add(calculationData);
+        saveSuccessful = true;
+      }
+
+      if (widget.onSave != null) {
+        widget.onSaveZakat!(calculationData);
+        saveSuccessful = true;
+      }
+
+      if (saveSuccessful) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Calculation saved successfully!')),
+          SnackBar(
+            content: Text('Calculation saved successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save calculation. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Calculation saved successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
     } else {
-      print("Error: zakat or selectedCurrency is null"); // Debug print
+      print("Error: selectedCurrency is null");
     }
   }
 
@@ -665,7 +738,7 @@ class _HomePageState extends State<HomePage> {
                   height: 20,
                 ),
                 Text(
-                  "Total asset ${assetsTotal?.toStringAsFixed(2) ?? 0} $selectedCurrency",
+                  "Total asset ${assetsTotal?.toStringAsFixed(2) ?? '0.00'} $selectedCurrency",
                   style: TextStyle(
                     fontSize: 30,
                     color: Colors.red,
@@ -762,7 +835,7 @@ class _HomePageState extends State<HomePage> {
                   height: 20,
                 ),
                 Text(
-                  "Total Expense ${expenseTotal?.toStringAsFixed(2) ?? 0} $selectedCurrency",
+                  "Total Expense ${expenseTotal?.toStringAsFixed(2) ?? '0.00'} $selectedCurrency",
                   style: TextStyle(
                     fontSize: 30,
                     color: Colors.red,
@@ -803,7 +876,7 @@ class _HomePageState extends State<HomePage> {
                     isLoading
                         ? "Loading..."
                         : isZakatEligible
-                            ? "${zakat?.toStringAsFixed(2) ?? "0.00"} $selectedCurrency"
+                            ? "${zakat?.toStringAsFixed(2) ?? '0.00'} $selectedCurrency"
                             : "You don't have to pay Zakat!!",
                     style: TextStyle(
                       fontSize: 28,
@@ -867,25 +940,47 @@ class _HomePageState extends State<HomePage> {
                 SizedBox(
                   height: 20,
                 ),
-                GestureDetector(
-                  onTap: _zakatProcess,
-                  child: Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                        color: Color.fromARGB(255, 236, 200, 81),
-                        borderRadius: BorderRadius.circular(12)),
-                    child: Center(
-                      child: Text(
-                        "Procecs",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+
+                if (!widget.editMode)
+                  GestureDetector(
+                    onTap: _zakatProcess,
+                    child: Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                          color: Color.fromARGB(255, 236, 200, 81),
+                          borderRadius: BorderRadius.circular(12)),
+                      child: Center(
+                        child: Text(
+                          "Process",
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
+
+                // GestureDetector(
+                //   onTap: _zakatProcess,
+                //   child: Container(
+                //     padding: EdgeInsets.all(12),
+                //     decoration: BoxDecoration(
+                //         color: Color.fromARGB(255, 236, 200, 81),
+                //         borderRadius: BorderRadius.circular(12)),
+                //     child: Center(
+                //       child: Text(
+                //         "Procecs",
+                //         style: TextStyle(
+                //           fontSize: 20,
+                //           fontWeight: FontWeight.bold,
+                //           color: Colors.white,
+                //         ),
+                //       ),
+                //     ),
+                //   ),
+                // ),
                 SizedBox(
                   height: 20,
                 ),

@@ -1,9 +1,12 @@
 // ignore_for_file: prefer_const_constructors, avoid_types_as_parameter_names
 
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
 import 'package:zakat/pages/process_page.dart';
 import 'package:zakat/pages/select_session.dart';
 import 'package:zakat/pages/zakat_saved.dart';
+import 'package:zakat/providers/zakat_provider.dart';
 
 import 'pages/home_page.dart';
 import 'pages/intro_page.dart';
@@ -12,8 +15,21 @@ import 'pages/save_page.dart';
 import 'pages/select_currency.dart';
 import 'utils/routes.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Hive.initFlutter();
+
+  var boxZakat = await Hive.openBox('boxZakat');
+  await Hive.openBox('zakatDistribution');
+
+  // runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => ZakatProvider(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -29,24 +45,25 @@ class MyApp extends StatelessWidget {
         MyRoutes.IntroRoute: (context) => IntroPage(),
         MyRoutes.HomeRoute: (context) => HomePage(
               selectedCurrency: '',
-              availableCurrencies: [],
-              onSaveZakat: null,
+              availableCurrencies: const [],
+              onSaveZakat: (Map<String, dynamic> onSaveZakat) {},
             ),
         MyRoutes.SaveRoute: (context) => SavePage(
-              savedDataList: [],
+              savedDataList: const [],
               onEdit: (index, updatedData) {},
+              onSaveZakat: (Map<String, dynamic> onSaveZakat) {},
             ),
         MyRoutes.MainRoute: (context) => MainPage(),
         MyRoutes.SelectedRoute: (context) => SelectCurrency(),
         MyRoutes.ZakatSave: (context) => ZakatSaved(
-              zakatDataList: [],
-              onUpdateZakat: (int index, Map<String, dynamic> updatedData) {
-                // Implement the update logic here if needed
-                // For now, we'll leave it empty
-              },
+              zakatDataList: const [],
+              onUpdateZakat: (int index, Map<String, dynamic> updatedData) {},
             ),
         MyRoutes.SelectedSession: (context) => SelectSession(),
-        MyRoutes.Process: (context) => ProcessPage(),
+        MyRoutes.Process: (context) => ProcessPage(
+              onSaveZakatProcess: (Map<String, dynamic> onSaveZakatProcess) {},
+              initialZakatData: const {},
+            ),
       },
     );
   }

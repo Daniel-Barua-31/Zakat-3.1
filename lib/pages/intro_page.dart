@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../utils/routes.dart';
 
 class IntroPage extends StatefulWidget {
-  IntroPage({super.key});
+  const IntroPage({super.key});
 
   @override
   State<IntroPage> createState() => _IntroPageState();

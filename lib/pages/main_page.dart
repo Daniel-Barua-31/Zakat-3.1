@@ -5,7 +5,7 @@ import 'home_page.dart';
 import 'save_page.dart';
 
 class MainPage extends StatefulWidget {
-  const MainPage({Key? key}) : super(key: key);
+  const MainPage({super.key});
 
   @override
   _MainPageState createState() => _MainPageState();
@@ -14,7 +14,7 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   int _selectedIndex = 0;
   List<Map<String, dynamic>> savedDataList = [];
-  List<Map<String, dynamic>> _zakatSavedDataList = [];
+  final List<Map<String, dynamic>> _zakatSavedDataList = [];
 
   void addSavedData(Map<String, dynamic> data) {
     setState(() {
@@ -30,20 +30,28 @@ class _MainPageState extends State<MainPage> {
 
   void _updateZakatData(int index, Map<String, dynamic> updatedData) {
     setState(() {
-      _zakatSavedDataList[index] = updatedData;
+      if (index >= 0 && index < _zakatSavedDataList.length) {
+        _zakatSavedDataList[index] = updatedData;
+      } else {
+        _zakatSavedDataList.add(updatedData);
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> _pages = [
+    final List<Widget> pages = [
       HomePage(
         selectedCurrency: '',
-        availableCurrencies: [],
+        availableCurrencies: const [],
         onSave: addSavedData,
         onSaveZakat: (zakatData) {
           setState(() {
-            _zakatSavedDataList.add(zakatData);
+            if (zakatData['editIndex'] != null) {
+              _updateZakatData(zakatData['editIndex'], zakatData);
+            } else {
+              _saveZakatData(zakatData);
+            }
           });
         },
       ),
@@ -54,6 +62,7 @@ class _MainPageState extends State<MainPage> {
             savedDataList[index] = updatedData;
           });
         },
+        onSaveZakat: _saveZakatData,
       ),
       ZakatSaved(
         zakatDataList: _zakatSavedDataList,
@@ -64,7 +73,7 @@ class _MainPageState extends State<MainPage> {
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
-        children: _pages,
+        children: pages,
       ),
       bottomNavigationBar: Container(
         color: Colors.green.shade400,
@@ -77,7 +86,7 @@ class _MainPageState extends State<MainPage> {
             tabBackgroundColor: Colors.green.shade300,
             tabBorderRadius: 18.0,
             gap: 18,
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             selectedIndex: _selectedIndex,
             onTabChange: (index) {
               setState(() {
@@ -94,8 +103,8 @@ class _MainPageState extends State<MainPage> {
                 text: 'Save',
               ),
               GButton(
-                icon: Icons.account_circle,
-                text: 'Profile',
+                icon: Icons.vertical_distribute_rounded,
+                text: 'Donation',
               )
             ],
           ),
