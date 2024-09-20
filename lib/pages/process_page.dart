@@ -22,8 +22,9 @@ class ProcessPage extends StatefulWidget {
 class _ProcessPageState extends State<ProcessPage> {
   List<Map<String, dynamic>> zakatDataList = [];
   List<Map<String, dynamic>> entries = [];
+  List<String> availableSessionYears = [];
 
-  late String dropdownValue;
+  String? dropdownValue;
   List<String> sessionYears = [];
 
   bool changedButton = false;
@@ -32,13 +33,20 @@ class _ProcessPageState extends State<ProcessPage> {
   TextEditingController amountController = TextEditingController();
 
   double totalSpent = 0.0;
+  double advance = 0.0;
+  double previousSessionAdvance = 0.0;
+  double originalZakat = 0.0;
+  double adjustedZakat = 0.0;
+  double remainingZakat = 0.0;
 
   @override
   void initState() {
     super.initState();
     _generateSessionYears();
-    // print("ProcessPage initState - editIndex: ${widget.editIndex}");
     _initializeData();
+    // _checkPreviousSessionAdvance();
+    _updateCalculations();
+    _updateAvailableSessionYears();
   } // recent added! 10 PM
 
   void _generateSessionYears() {
@@ -47,22 +55,108 @@ class _ProcessPageState extends State<ProcessPage> {
       String session = '${currentYear - i - 1}-${currentYear - i}';
       sessionYears.add(session);
     }
-    dropdownValue = sessionYears.first;
+    sessionYears.insert(0, '');
+    dropdownValue = '';
+  }
+
+  void _updateAvailableSessionYears() {
+    final boxZakatDistribution = Hive.box('zakatDistribution');
+    Set<String> usedSessions = {};
+
+    for (int i = 0; i < boxZakatDistribution.length; i++) {
+      final data = boxZakatDistribution.getAt(i);
+      if (data != null && data['sessionYear'] != null) {
+        usedSessions.add(data['sessionYear']);
+      }
+    }
+
+    availableSessionYears = sessionYears.where((session) {
+      if (session.isEmpty) return true;
+      if (widget.editIndex != null && session == dropdownValue) return true;
+      return !usedSessions.contains(session);
+    }).toList();
+
+    if (dropdownValue == null || dropdownValue!.isEmpty) {
+      dropdownValue = availableSessionYears.firstWhere((s) => s.isNotEmpty,
+          orElse: () => '');
+    }
   }
 
   void _initializeData() {
     if (widget.initialZakatData != null) {
       zakatDataList.add(Map<String, dynamic>.from(widget.initialZakatData!));
-      dropdownValue = widget.initialZakatData!['sessionYear'] ?? '2023-2024';
+      dropdownValue = widget.initialZakatData!['sessionYear'] ?? '';
       totalSpent = 0.0;
+      originalZakat = _calculateOriginalZakat();
 
       if (widget.editIndex != null) {
         _loadExistingData();
       } else {
         _loadInitialData();
       }
+      _checkPreviousSessionAdvance();
+      _updateCalculations();
     }
   } // recent added! 10 PM
+
+  void _updateCalculations() {
+    setState(() {
+      originalZakat = _calculateOriginalZakat();
+      adjustedZakat = originalZakat - previousSessionAdvance;
+      remainingZakat = adjustedZakat - totalSpent;
+      if (remainingZakat < 0) {
+        advance = -remainingZakat;
+        remainingZakat = 0;
+      } else {
+        advance = 0;
+      }
+    });
+  }
+
+  void _updateSessionData(String? newValue) {
+    setState(() {
+      dropdownValue = newValue!;
+      _checkPreviousSessionAdvance();
+      _updateAdjustedZakat();
+    });
+  } // added now
+
+  void _updateAdjustedZakat() {
+    setState(() {
+      double originalZakat = _calculateOriginalZakat();
+      adjustedZakat = originalZakat - previousSessionAdvance;
+      double remainingZakat = adjustedZakat - totalSpent;
+      if (remainingZakat < 0) {
+        advance = -remainingZakat;
+      } else {
+        advance = 0;
+      }
+    });
+  }
+
+  void _checkPreviousSessionAdvance() {
+    if (dropdownValue != null && dropdownValue!.isNotEmpty) {
+      final currentSessionYear = dropdownValue!.split('-')[0];
+      final previousSessionYear =
+          (int.parse(currentSessionYear) - 1).toString();
+      final previousSession = '$previousSessionYear-$currentSessionYear';
+
+      previousSessionAdvance = _getPreviousSessionAdvance(previousSession);
+    } else {
+      previousSessionAdvance = 0.0;
+    }
+  }
+
+  double _getPreviousSessionAdvance(String previousSession) {
+    final boxZakatDistribution = Hive.box('zakatDistribution');
+    for (int i = 0; i < boxZakatDistribution.length; i++) {
+      final data = boxZakatDistribution.getAt(i);
+      if (data != null && data['sessionYear'] == previousSession) {
+        return (data['advance'] as num?)?.toDouble() ?? 0.0;
+      }
+    }
+    return 0.0;
+  }
 
   void _loadExistingData() {
     final boxZakatDistribution = Hive.box('zakatDistribution');
@@ -79,6 +173,7 @@ class _ProcessPageState extends State<ProcessPage> {
           totalSpent += (entry['amount'] as num?)?.toDouble() ?? 0.0;
         }
         dropdownValue = existingData['sessionYear'] ?? dropdownValue;
+        advance = (existingData['advance'] as num?)?.toDouble() ?? 0.0;
       }
     }
   } // recent added! 10 PM
@@ -92,6 +187,8 @@ class _ProcessPageState extends State<ProcessPage> {
       for (var entry in entries) {
         totalSpent += (entry['amount'] as num?)?.toDouble() ?? 0.0;
       }
+      advance =
+          (widget.initialZakatData!['advance'] as num?)?.toDouble() ?? 0.0;
     }
   } // recent added! 10 PM
 
@@ -111,7 +208,7 @@ class _ProcessPageState extends State<ProcessPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          "Zakat Donation Distribution",
+          "Donation Distribution",
           style: TextStyle(
             fontSize: 25,
             fontWeight: FontWeight.bold,
@@ -152,49 +249,48 @@ class _ProcessPageState extends State<ProcessPage> {
                         ),
                       ],
                     ),
-                    child: DropdownButton<String>(
-                      value: dropdownValue,
-                      icon: Icon(Icons.arrow_drop_down,
-                          color: Colors.green.shade700),
-                      style: TextStyle(
-                        color: Colors.green.shade700,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      underline: const SizedBox(),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          dropdownValue = newValue!;
-                        });
-                      },
-                      items: sessionYears
-                          .map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Text(value),
+                    child: widget.editIndex != null
+                        ? Text(
+                            dropdownValue ?? 'No session selected',
+                            style: TextStyle(
+                              color: Colors.green.shade700,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : DropdownButton<String>(
+                            value: dropdownValue,
+                            icon: Icon(Icons.arrow_drop_down,
+                                color: Colors.green.shade700),
+                            style: TextStyle(
+                              color: Colors.green.shade700,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            underline: const SizedBox(),
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                // dropdownValue = newValue!; // comment now
+                                _updateSessionData(newValue);
+                              });
+                            },
+                            items: availableSessionYears
+                                .map<DropdownMenuItem<String>>((String value) {
+                              return DropdownMenuItem<String>(
+                                value: value,
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 8),
+                                  child: Text(value.isEmpty
+                                      ? 'Select a session'
+                                      : value),
+                                ),
+                              );
+                            }).toList(),
+                            hint: Text('Select a session'),
+                            dropdownColor: Colors.white,
+                            isExpanded: true,
                           ),
-                        );
-                      }).toList(), // added on 3:11
-
-                      // items: [
-                      //   '2020-2021',
-                      //   '2021-2022',
-                      //   '2022-2023',
-                      //   '2023-2024',
-                      // ].map<DropdownMenuItem<String>>((String value) {
-                      //   return DropdownMenuItem<String>(
-                      //     value: value,
-                      //     child: Padding(
-                      //       padding: const EdgeInsets.symmetric(vertical: 8),
-                      //       child: Text(value),
-                      //     ),
-                      //   );
-                      // }).toList(), // commented on 3:11
-                      dropdownColor: Colors.white,
-                      isExpanded: true,
-                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -274,12 +370,44 @@ class _ProcessPageState extends State<ProcessPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Total Zakat',
+                      'Original Zakat',
                       style:
                           TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      '${_calculateTotalZakat().toStringAsFixed(2)} ${_getCurrency()}',
+                      '${originalZakat.toStringAsFixed(2)} ${_getCurrency()}',
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Previous Session Advance',
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      '${previousSessionAdvance.toStringAsFixed(2)} ${_getCurrency()}',
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Adjusted Zakat ',
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      '${adjustedZakat.toStringAsFixed(2)} ${_getCurrency()}',
                       style:
                           TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
@@ -295,13 +423,28 @@ class _ProcessPageState extends State<ProcessPage> {
                           TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      '${_calculateRemainingZakat().toStringAsFixed(2)} ${_getCurrency()}',
+                      '${remainingZakat.toStringAsFixed(2)} ${_getCurrency()}',
                       style:
                           TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
                 SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Advance',
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      '${advance.toStringAsFixed(2)} ${_getCurrency()}',
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
                 ElevatedButton.icon(
                   onPressed: _zakatSave,
                   label: Text(
@@ -334,35 +477,33 @@ class _ProcessPageState extends State<ProcessPage> {
     double? amount = double.tryParse(amountController.text);
 
     if (institute.isNotEmpty && amount != null) {
-      double totalZakat = _calculateTotalZakat();
+      setState(() {
+        entries.add({'institute': institute, 'amount': amount});
+        totalSpent += amount;
+        _updateCalculations();
 
-      if (totalSpent + amount > totalZakat) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                'Error: Total Donation Cannot exceed the total Zakat value'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      } else {
-        setState(() {
-          entries.add({'institute': institute, 'amount': amount});
-          totalSpent += amount;
-          instituteController.clear();
-          amountController.clear();
-        });
-      }
+        instituteController.clear();
+        amountController.clear();
+      });
     } else {
       print("Please enter valid data");
     }
   }
 
-  double _calculateTotalZakat() {
+  double _calculateOriginalZakat() {
     double totalZakat = 0.0;
     for (var zakatData in zakatDataList) {
       totalZakat += zakatData['zakat'];
     }
     return totalZakat;
+  }
+
+  double _calculateAdjustedZakat() {
+    return adjustedZakat;
+  }
+
+  double _calculateRemainingZakat() {
+    return adjustedZakat - totalSpent;
   }
 
   String _getCurrency() {
@@ -372,8 +513,23 @@ class _ProcessPageState extends State<ProcessPage> {
     return '';
   }
 
-  double _calculateRemainingZakat() {
-    return _calculateTotalZakat() - totalSpent;
+  double _displayRemainingZakat() {
+    return _calculateRemainingZakat() > 0 ? _calculateRemainingZakat() : 0;
+  }
+
+  bool _isSessionUnique(String session) {
+    final boxZakatDistribution = Hive.box('zakatDistribution');
+    for (int i = 0; i < boxZakatDistribution.length; i++) {
+      final data = boxZakatDistribution.getAt(i);
+      if (data != null && data['sessionYear'] == session) {
+        // If we're editing an existing entry, it's okay for it to match its own session
+        if (widget.editIndex != null && i == widget.editIndex) {
+          continue;
+        }
+        return false; // Session already exists
+      }
+    }
+    return true; // Session is unique
   }
 
   void _zakatSave() {
@@ -384,28 +540,42 @@ class _ProcessPageState extends State<ProcessPage> {
       return;
     }
 
-    var zakat = zakatDataList[0]['zakat'];
+    var originalZakat = _calculateOriginalZakat();
+    var adjustedZakat = _calculateAdjustedZakat();
+    // var zakat = _calculateTotalZakat();
     var currency = zakatDataList[0]['currency'];
     var remaining = _calculateRemainingZakat();
 
-    if (zakat == null || currency == null) {
+    if (currency == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Error: Invalid Zakat data.')),
       );
       return;
     }
 
+    if (!_isSessionUnique(dropdownValue!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text('Error: Data for this session year has already been saved.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     final zakatProcessData = {
-      'zakat': zakat,
+      'zakat': originalZakat,
+      'adjustedZakat': adjustedZakat,
       'currency': currency,
       'sessionYear': dropdownValue,
-      'remaining': remaining,
+      // 'remaining': remaining,
+      'remaining': _displayRemainingZakat(),
+      'advance': advance,
+      'previousSessionAdvance': previousSessionAdvance,
       'entries': entries,
       'date': DateTime.now().toString(),
     };
-
-    widget.onSaveZakatProcess
-        ?.call(Map<String, dynamic>.from(zakatProcessData));
 
     final boxZakatDistribution = Hive.box('zakatDistribution');
 

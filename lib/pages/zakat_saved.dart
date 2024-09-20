@@ -17,7 +17,7 @@ class ZakatSaved extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Zakat Distribution Saved',
+          'Donation History',
           style: TextStyle(
               fontSize: 32, fontWeight: FontWeight.w500, color: Colors.white),
         ),
@@ -39,9 +39,11 @@ class ZakatSaved extends StatelessWidget {
                 zakat: (data['zakat'] as num?)?.toDouble() ?? 0.0,
                 currency: data['currency'] ?? '',
                 remaining: (data['remaining'] as num?)?.toDouble() ?? 0.0,
-                onEdit: (data['remaining'] as num? ?? 0) > 0
-                    ? () => _editZakat(context, index, data)
-                    : null,
+                advance: (data['advance'] as num?)?.toDouble() ?? 0.0,
+                // onEdit: (data['remaining'] as num? ?? 0) > 0
+                //     ? () => _editZakat(context, index, data)
+                //     : null,
+                onEdit: () => _editZakat(context, index, data),
                 onDelete: (context) => _deleteZakat(context, index),
               );
             },
@@ -66,7 +68,7 @@ class ZakatSaved extends StatelessWidget {
     }
     return {};
   }
-  
+
   void _editZakat(
       BuildContext context, int index, Map<String, dynamic> data) async {
     final result = await Navigator.push(

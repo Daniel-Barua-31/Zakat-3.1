@@ -152,14 +152,29 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<double> getManualCurrencyRate(String selectedCurrency) async {
+    switch (selectedCurrency) {
+      case 'USD':
+        return 1.0;
+      case 'BDT':
+        return 120.0;
+      case 'EUR':
+        return 0.90;
+      // Add more currencies as needed
+      default:
+        throw Exception('Unsupported currency: $selectedCurrency');
+    }
+  }
+
   Future<void> calculateZakat() async {
     setState(() {
       isLoading = true;
     });
 
-    const String apiKey = 'a15d03e2fb2667c30d398e6d';
+    // const String apiKey = 'a15d03e2fb2667c30d398e6d';
 
-    double currency = await fetchUsdToCurrencyRate(apiKey, selectedCurrency!);
+    // double currency = await fetchUsdToCurrencyRate(apiKey, selectedCurrency!);
+    double currency = await getManualCurrencyRate(selectedCurrency!);
 
     print('calculate Zakat: $selectedCurrency');
 
@@ -951,7 +966,7 @@ class _HomePageState extends State<HomePage> {
                           borderRadius: BorderRadius.circular(12)),
                       child: Center(
                         child: Text(
-                          "Process",
+                          "Donate",
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,

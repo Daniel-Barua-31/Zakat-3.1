@@ -6,9 +6,9 @@ class ZakatTile extends StatelessWidget {
   final double zakat;
   final String currency;
   final double remaining;
+  final double advance;
   final VoidCallback? onEdit;
   final Function(BuildContext)? onDelete;
-  final double editThreshold;
 
   const ZakatTile({
     super.key,
@@ -16,9 +16,9 @@ class ZakatTile extends StatelessWidget {
     required this.zakat,
     required this.sessionYear,
     required this.remaining,
+    required this.advance,
     this.onEdit,
     this.onDelete,
-    this.editThreshold = 0.02,
   });
 
   @override
@@ -61,39 +61,40 @@ class ZakatTile extends StatelessWidget {
                     'Zakat: ${zakat.toStringAsFixed(2)} $currency',
                     style: const TextStyle(color: Colors.black),
                   ),
-                  const SizedBox(width: 8),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
                   Text(
-                    'Remaining: ${remaining.toStringAsFixed(2)} $currency',
+                    // 'Remaining: ${remaining.toStringAsFixed(2)} $currency',
+                    'Remaining: ${remaining > 0 ? remaining.toStringAsFixed(2) : '0.00'} $currency',
+                    style: const TextStyle(color: Colors.black),
+                  ),
+                  Text(
+                    'Advance: ${advance.toStringAsFixed(2)} $currency',
                     style: const TextStyle(color: Colors.black),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              if (remaining > editThreshold && onEdit != null)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: ElevatedButton(
-                    onPressed: onEdit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green[400],
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                    ),
-                    child: const Text(
-                      'Edit',
-                      style: TextStyle(color: Colors.white),
-                    ),
+              // if (onEdit != null)
+              Align(
+                alignment: Alignment.centerRight,
+                child: ElevatedButton(
+                  onPressed: onEdit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green[400],
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   ),
-                )
-              else
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Icon(
-                    Icons.check_circle,
-                    color: Colors.green[400],
-                    size: 40.0,
+                  child: const Text(
+                    'Edit',
+                    style: TextStyle(color: Colors.white),
                   ),
                 ),
+              ),
             ],
           ),
         ),
