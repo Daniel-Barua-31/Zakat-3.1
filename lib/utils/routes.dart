@@ -7,4 +7,6 @@ class MyRoutes {
   static String ZakatSave = "/zakatSave";
   static String SelectedSession = "/selectedSession";
   static String Process = "/process";
+  static String Advance = "/advance";
+  static String AdvanceHistory = "/advanceHistory";
 }

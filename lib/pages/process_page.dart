@@ -38,15 +38,22 @@ class _ProcessPageState extends State<ProcessPage> {
   double originalZakat = 0.0;
   double adjustedZakat = 0.0;
   double remainingZakat = 0.0;
+  double advanceDonationAmount = 0.0;
+
+  final Map<String, Map<String, double>> exchangeRates = {
+    'USD': {'EUR': 0.85, 'BDT': 110.0},
+    'EUR': {'USD': 1.18, 'BDT': 129.5},
+    'BDT': {'USD': 0.0091, 'EUR': 0.0077},
+  };
 
   @override
   void initState() {
     super.initState();
     _generateSessionYears();
     _initializeData();
-    // _checkPreviousSessionAdvance();
     _updateCalculations();
     _updateAvailableSessionYears();
+    _printSomething();
   } // recent added! 10 PM
 
   void _generateSessionYears() {
@@ -57,6 +64,65 @@ class _ProcessPageState extends State<ProcessPage> {
     }
     sessionYears.insert(0, '');
     dropdownValue = '';
+  }
+
+  double convertCurrency(
+      double amount, String fromCurrency, String toCurrency) {
+    if (fromCurrency == toCurrency) return amount;
+
+    if (exchangeRates.containsKey(fromCurrency) &&
+        exchangeRates[fromCurrency]!.containsKey(toCurrency)) {
+      return amount * exchangeRates[fromCurrency]![toCurrency]!;
+    }
+
+    // If direct conversion is not available, convert through USD
+    if (fromCurrency != 'USD' && toCurrency != 'USD') {
+      double amountInUSD = convertCurrency(amount, fromCurrency, 'USD');
+      return convertCurrency(amountInUSD, 'USD', toCurrency);
+    }
+
+    // If conversion is not possible, return the original amount
+    print('Warning: Unable to convert from $fromCurrency to $toCurrency');
+    return amount;
+  }
+
+  // double getAdvanceDonationAmount(String session) {
+  //   final boxAdvanceDonation = Hive.box('advanceDonation');
+  //   double totalAmount = 0.0;
+
+  //   for (int i = 0; i < boxAdvanceDonation.length; i++) {
+  //     final data = boxAdvanceDonation.getAt(i);
+  //     if (data != null && data['sessionYear'] == session) {
+  //       totalAmount += (data['totalAmount'] as num?)?.toDouble() ?? 0.0;
+  //     }
+  //   }
+
+  //   return totalAmount;
+  // }
+
+  double getAdvanceDonationAmount(String session) {
+    final boxAdvanceDonation = Hive.box('advanceDonation');
+    double totalAmount = 0.0;
+    String targetCurrency = _getCurrency();
+
+    for (int i = 0; i < boxAdvanceDonation.length; i++) {
+      final data = boxAdvanceDonation.getAt(i);
+      if (data != null && data['sessionYear'] == session) {
+        double amount = (data['totalAmount'] as num?)?.toDouble() ?? 0.0;
+        String currency = data['currency'] ?? targetCurrency;
+
+        // Convert the amount to the target currency
+        double convertedAmount =
+            convertCurrency(amount, currency, targetCurrency);
+        totalAmount += convertedAmount;
+      }
+    }
+
+    return totalAmount;
+  }
+
+  void _printSomething() {
+    // double s = getAdvanceDonationAmount(session);
   }
 
   void _updateAvailableSessionYears() {
@@ -77,8 +143,7 @@ class _ProcessPageState extends State<ProcessPage> {
     }).toList();
 
     if (dropdownValue == null || dropdownValue!.isEmpty) {
-      dropdownValue = availableSessionYears.firstWhere((s) => s.isNotEmpty,
-          orElse: () => '');
+      dropdownValue = '';
     }
   }
 
@@ -113,18 +178,31 @@ class _ProcessPageState extends State<ProcessPage> {
     });
   }
 
+  // void _updateSessionData(String? newValue) {
+  //   setState(() {
+  //     dropdownValue = newValue!;
+  //     _checkPreviousSessionAdvance();
+  //     _updateAdjustedZakat();
+  //   });
+  // } // added now
+
   void _updateSessionData(String? newValue) {
-    setState(() {
-      dropdownValue = newValue!;
-      _checkPreviousSessionAdvance();
-      _updateAdjustedZakat();
-    });
-  } // added now
+    if (newValue != null && newValue.isNotEmpty) {
+      setState(() {
+        dropdownValue = newValue;
+        advanceDonationAmount = getAdvanceDonationAmount(dropdownValue!);
+        print("advance: $advanceDonationAmount");
+        _checkPreviousSessionAdvance();
+        _updateAdjustedZakat();
+      });
+    }
+  }
 
   void _updateAdjustedZakat() {
     setState(() {
       double originalZakat = _calculateOriginalZakat();
       adjustedZakat = originalZakat - previousSessionAdvance;
+      print(adjustedZakat);
       double remainingZakat = adjustedZakat - totalSpent;
       if (remainingZakat < 0) {
         advance = -remainingZakat;
@@ -134,6 +212,21 @@ class _ProcessPageState extends State<ProcessPage> {
     });
   }
 
+  // void _checkPreviousSessionAdvance() {
+  //   if (dropdownValue != null && dropdownValue!.isNotEmpty) {
+  //     final currentSessionYear = dropdownValue!.split('-')[0];
+  //     final previousSessionYear =
+  //         (int.parse(currentSessionYear) - 1).toString();
+  //     final previousSession = '$previousSessionYear-$currentSessionYear';
+
+  //     previousSessionAdvance = _getPreviousSessionAdvance(previousSession) +
+  //         getAdvanceDonationAmount(dropdownValue!);
+  //     print("_check previous : $previousSessionAdvance");
+  //   } else {
+  //     previousSessionAdvance = 0.0;
+  //   }
+  // }
+
   void _checkPreviousSessionAdvance() {
     if (dropdownValue != null && dropdownValue!.isNotEmpty) {
       final currentSessionYear = dropdownValue!.split('-')[0];
@@ -141,7 +234,17 @@ class _ProcessPageState extends State<ProcessPage> {
           (int.parse(currentSessionYear) - 1).toString();
       final previousSession = '$previousSessionYear-$currentSessionYear';
 
-      previousSessionAdvance = _getPreviousSessionAdvance(previousSession);
+      double previousAdvance = _getPreviousSessionAdvance(previousSession);
+      double currentAdvanceDonation = getAdvanceDonationAmount(dropdownValue!);
+
+      String targetCurrency = _getCurrency();
+
+      // Convert previous advance to target currency
+      previousSessionAdvance = convertCurrency(previousAdvance,
+              _getPreviousSessionCurrency(previousSession), targetCurrency) +
+          currentAdvanceDonation;
+
+      print("_check previous : $previousSessionAdvance");
     } else {
       previousSessionAdvance = 0.0;
     }
@@ -157,6 +260,28 @@ class _ProcessPageState extends State<ProcessPage> {
     }
     return 0.0;
   }
+
+  String _getPreviousSessionCurrency(String previousSession) {
+    final boxZakatDistribution = Hive.box('zakatDistribution');
+    for (int i = 0; i < boxZakatDistribution.length; i++) {
+      final data = boxZakatDistribution.getAt(i);
+      if (data != null && data['sessionYear'] == previousSession) {
+        return data['currency'] ?? _getCurrency();
+      }
+    }
+    return _getCurrency();
+  }
+
+  // double _getPreviousSessionAdvance(String previousSession) {
+  //   final boxZakatDistribution = Hive.box('zakatDistribution');
+  //   for (int i = 0; i < boxZakatDistribution.length; i++) {
+  //     final data = boxZakatDistribution.getAt(i);
+  //     if (data != null && data['sessionYear'] == previousSession) {
+  //       return (data['advance'] as num?)?.toDouble() ?? 0.0;
+  //     }
+  //   }
+  //   return 0.0;
+  // }
 
   void _loadExistingData() {
     final boxZakatDistribution = Hive.box('zakatDistribution');
@@ -386,9 +511,9 @@ class _ProcessPageState extends State<ProcessPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Previous Session Advance',
+                      'Previous Extra',
                       style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                     ),
                     Text(
                       '${previousSessionAdvance.toStringAsFixed(2)} ${_getCurrency()}',

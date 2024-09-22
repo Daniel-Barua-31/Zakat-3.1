@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:zakat/pages/advance_donation_history.dart';
+import 'package:zakat/pages/advance_donation_page.dart';
 import 'package:zakat/pages/process_page.dart';
 import 'package:zakat/pages/select_session.dart';
 import 'package:zakat/pages/zakat_saved.dart';
@@ -22,6 +24,7 @@ void main() async {
 
   var boxZakat = await Hive.openBox('boxZakat');
   await Hive.openBox('zakatDistribution');
+  await Hive.openBox('advanceDonation');
 
   // runApp(const MyApp());
   runApp(
@@ -63,6 +66,14 @@ class MyApp extends StatelessWidget {
         MyRoutes.Process: (context) => ProcessPage(
               onSaveZakatProcess: (Map<String, dynamic> onSaveZakatProcess) {},
               initialZakatData: const {},
+            ),
+        MyRoutes.Advance: (context) => AdvanceDonationPage(
+              initialData: const {},
+              editIndex: 0,
+              onSaveAdvanceDonation: (updatedData) {},
+            ),
+        MyRoutes.AdvanceHistory: (context) => AdvanceDonationHistory(
+              onUpdateAdvanceDonation: (index, updatedData) {},
             ),
       },
     );

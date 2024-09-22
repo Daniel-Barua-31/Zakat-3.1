@@ -1,22 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
-class ZakatTile extends StatelessWidget {
+class AdvanceDonationTile extends StatelessWidget {
   final String sessionYear;
-  final double zakat;
+  final double totalAmount;
   final String currency;
-  final double remaining;
-  final double advance;
+  final String date;
   final VoidCallback? onEdit;
   final Function(BuildContext)? onDelete;
 
-  const ZakatTile({
+  const AdvanceDonationTile({
     super.key,
-    required this.currency,
-    required this.zakat,
     required this.sessionYear,
-    required this.remaining,
-    required this.advance,
+    required this.totalAmount,
+    required this.currency,
+    required this.date,
     this.onEdit,
     this.onDelete,
   });
@@ -40,52 +38,36 @@ class ZakatTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.blueGrey[100],
+            color: Colors.blue[100],
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Session: $sessionYear',
+                'Future Session: $sessionYear',
                 style: const TextStyle(
                   color: Colors.black,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 8),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    'Zakat: ${zakat.toStringAsFixed(2)} $currency',
-                    style: const TextStyle(color: Colors.black),
-                  ),
-                ],
+              Text(
+                'Amount: ${totalAmount.toStringAsFixed(2)} $currency',
+                style: const TextStyle(color: Colors.black),
               ),
               const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    // 'Remaining: ${remaining.toStringAsFixed(2)} $currency',
-                    'Remaining: ${remaining > 0 ? remaining.toStringAsFixed(2) : '0.00'} $currency',
-                    style: const TextStyle(color: Colors.black),
-                  ),
-                  Text(
-                    'Extra : ${advance.toStringAsFixed(2)} $currency',
-                    style: const TextStyle(color: Colors.black),
-                  ),
-                ],
+              Text(
+                'Date: $date',
+                style: const TextStyle(color: Colors.black),
               ),
               const SizedBox(height: 8),
-              // if (onEdit != null)
               Align(
                 alignment: Alignment.centerRight,
                 child: ElevatedButton(
                   onPressed: onEdit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green[400],
+                    backgroundColor: Colors.blue[400],
                     padding:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   ),

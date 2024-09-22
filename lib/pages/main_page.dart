@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
+import 'package:zakat/pages/advance_donation_history.dart';
+import 'package:zakat/pages/advance_donation_page.dart';
 import 'package:zakat/pages/zakat_saved.dart';
 import 'home_page.dart';
 import 'save_page.dart';
@@ -68,6 +70,14 @@ class _MainPageState extends State<MainPage> {
         zakatDataList: _zakatSavedDataList,
         onUpdateZakat: _updateZakatData,
       ),
+      AdvanceDonationPage(
+        initialData: const {},
+        editIndex: 0,
+        onSaveAdvanceDonation: (updatedData) {},
+      ),
+      AdvanceDonationHistory(
+        onUpdateAdvanceDonation: (index, updatedData) {},
+      ),
     ];
 
     return Scaffold(
@@ -95,16 +105,24 @@ class _MainPageState extends State<MainPage> {
             },
             tabs: const [
               GButton(
-                icon: Icons.home,
-                text: 'Home',
+                icon: Icons.calculate,
+                text: 'Calculate',
               ),
               GButton(
                 icon: Icons.save,
                 text: 'Save',
               ),
               GButton(
-                icon: Icons.vertical_distribute_rounded,
+                icon: Icons.volunteer_activism,
                 text: 'Donation',
+              ),
+              GButton(
+                icon: Icons.request_page,
+                text: 'Advance',
+              ),
+              GButton(
+                icon: Icons.history_edu,
+                text: 'History',
               )
             ],
           ),
