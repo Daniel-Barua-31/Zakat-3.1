@@ -80,20 +80,38 @@ class _MainPageState extends State<MainPage> {
       ),
     ];
 
+    // Define the background color based on the selected index
+    Color backgroundColor = Colors.white;
+    Color navBarColor = Colors.green.shade400;
+    Color navBarBackgroundColor = Colors.green.shade400;
+
+    if (_selectedIndex == 3 || _selectedIndex == 4) {
+      backgroundColor = Colors.blue.shade100;
+      navBarColor = Colors.blue.shade400;
+      navBarBackgroundColor = Colors.blue.shade400;
+    }
+
     return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: pages,
+      body: Container(
+        color: backgroundColor,
+        child: IndexedStack(
+          index: _selectedIndex,
+          children: pages,
+        ),
       ),
       bottomNavigationBar: Container(
-        color: Colors.green.shade400,
+        color: navBarColor,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 10),
           child: GNav(
-            backgroundColor: Colors.green.shade400,
+            backgroundColor: navBarBackgroundColor,
             color: Colors.white,
-            activeColor: Colors.green.shade900,
-            tabBackgroundColor: Colors.green.shade300,
+            activeColor: _selectedIndex == 3 || _selectedIndex == 4
+                ? Colors.blue.shade900
+                : Colors.green.shade900,
+            tabBackgroundColor: _selectedIndex == 3 || _selectedIndex == 4
+                ? Colors.blue.shade300
+                : Colors.green.shade300,
             tabBorderRadius: 18.0,
             gap: 18,
             padding: const EdgeInsets.all(16),

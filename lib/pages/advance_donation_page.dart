@@ -4,12 +4,23 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
 class AdvanceDonationPage extends StatefulWidget {
+  // const AdvanceDonationPage({
+  //   super.key,
+  //   required Map<String, dynamic> initialData,
+  //   required int editIndex,
+  //   required Null Function(dynamic updatedData) onSaveAdvanceDonation,
+  // });
+
   const AdvanceDonationPage({
     super.key,
-    required Map<String, dynamic> initialData,
-    required int editIndex,
-    required Null Function(dynamic updatedData) onSaveAdvanceDonation,
+    required this.initialData,
+    required this.editIndex,
+    required this.onSaveAdvanceDonation,
   });
+
+  final Map<String, dynamic> initialData;
+  final int editIndex;
+  final Function(dynamic updatedData) onSaveAdvanceDonation;
 
   @override
   _AdvanceDonationPageState createState() => _AdvanceDonationPageState();
@@ -19,6 +30,7 @@ class _AdvanceDonationPageState extends State<AdvanceDonationPage> {
   String? dropdownValue;
   String? currencyValue;
   List<String> sessionYears = [];
+  List<String> availableSessionYears = [];
   List<String> currencies = ['USD', 'BDT', 'EUR'];
   TextEditingController instituteController = TextEditingController();
   TextEditingController amountController = TextEditingController();
@@ -29,6 +41,7 @@ class _AdvanceDonationPageState extends State<AdvanceDonationPage> {
   void initState() {
     super.initState();
     _generateSessionYears();
+    _loadExistingDonations();
     currencyValue = currencies.first;
   }
 
@@ -40,6 +53,21 @@ class _AdvanceDonationPageState extends State<AdvanceDonationPage> {
       sessionYears.add(session);
     }
     dropdownValue = sessionYears.first;
+  }
+
+  Future<void> _loadExistingDonations() async {
+    final boxAdvanceDonation = await Hive.openBox('advanceDonation');
+    List<String> existingSessionYears = boxAdvanceDonation.values
+        .map((donation) => donation['sessionYear'] as String)
+        .toList();
+
+    setState(() {
+      availableSessionYears = sessionYears
+          .where((year) => !existingSessionYears.contains(year))
+          .toList();
+      dropdownValue =
+          availableSessionYears.isNotEmpty ? availableSessionYears.first : null;
+    });
   }
 
   @override
@@ -74,7 +102,7 @@ class _AdvanceDonationPageState extends State<AdvanceDonationPage> {
                 const SizedBox(height: 16),
                 _buildDropdown(
                   value: dropdownValue,
-                  items: sessionYears,
+                  items: availableSessionYears,
                   onChanged: (String? newValue) {
                     setState(() {
                       dropdownValue = newValue!;
@@ -274,7 +302,15 @@ class _AdvanceDonationPageState extends State<AdvanceDonationPage> {
     );
 
     // Clear the entries and total amount after saving
+    // setState(() {
+    //   entries.clear();
+    //   totalAmount = 0.0;
+    // });
+
     setState(() {
+      availableSessionYears.remove(dropdownValue);
+      dropdownValue =
+          availableSessionYears.isNotEmpty ? availableSessionYears.first : null;
       entries.clear();
       totalAmount = 0.0;
     });
