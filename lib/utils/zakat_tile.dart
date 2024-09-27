@@ -69,11 +69,11 @@ class ZakatTile extends StatelessWidget {
                 children: [
                   Text(
                     // 'Remaining: ${remaining.toStringAsFixed(2)} $currency',
-                    'Remaining: ${remaining > 0 ? remaining.toStringAsFixed(2) : '0.00'} $currency',
+                    'Due: ${remaining > 0 ? remaining.toStringAsFixed(2) : '0.00'} $currency',
                     style: const TextStyle(color: Colors.black),
                   ),
                   Text(
-                    'Extra : ${advance.toStringAsFixed(2)} $currency',
+                    'Advance : ${advance.toStringAsFixed(2)} $currency',
                     style: const TextStyle(color: Colors.black),
                   ),
                 ],

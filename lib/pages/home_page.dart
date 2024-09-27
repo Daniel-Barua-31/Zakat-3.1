@@ -180,9 +180,11 @@ class _HomePageState extends State<HomePage> {
 
     try {
       double res2 = assetsTotal! - expenseTotal!;
-      double targetGoldPrice = await getGoldPrice();
+      // double targetGoldPrice = await getGoldPrice();
+      double targetGoldPrice = 80.96;
       double validGoldPrice = targetGoldPrice * 87.48 * currency;
-      double targetSilverPrice = await getSilverPrice();
+      // double targetSilverPrice = await getSilverPrice();
+      double targetSilverPrice = 0.92;
       double validSilverPrice = targetSilverPrice * 612.36 * currency;
 
       totalAssets();

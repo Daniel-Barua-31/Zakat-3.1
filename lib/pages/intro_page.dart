@@ -1,93 +1,219 @@
 // ignore_for_file: prefer_const_constructors
 
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import '../utils/routes.dart';
 
 class IntroPage extends StatefulWidget {
-  const IntroPage({Key? key}) : super(key: key);
+  const IntroPage({super.key});
 
   @override
   State<IntroPage> createState() => _IntroPageState();
 }
 
-class _IntroPageState extends State<IntroPage> {
-  bool changedButton = false;
+class _IntroPageState extends State<IntroPage>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  bool _isCalculating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 5),
+      vsync: this,
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onCalculatePressed() async {
+    setState(() => _isCalculating = true);
+    await Future.delayed(const Duration(seconds: 2));
+    setState(() => _isCalculating = false);
+    Navigator.pushNamed(context, MyRoutes.SelectedRoute);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.green.shade400,
-      body: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Center(
-                  child: Container(
-                    constraints: BoxConstraints(
-                      maxWidth: 250,
-                      maxHeight: 250,
+      body: Stack(
+        children: [
+          // Abstract background pattern
+          CustomPaint(
+            painter: AbstractBackgroundPainter(_controller),
+            size: Size.infinite,
+          ),
+
+          // Main content
+          SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Abstract Zakat symbol
+                        SizedBox(
+                          width: 100,
+                          height: 100,
+                          child: CustomPaint(
+                            painter: ZakatSymbolPainter(_controller),
+                          ),
+                        ),
+                        SizedBox(height: 20),
+                        // Zakat text
+                        Text(
+                          "ZAKAT",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w300,
+                            color: Colors.white,
+                            fontSize: 36,
+                            letterSpacing: 8,
+                          ),
+                        ),
+                      ],
                     ),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white,
-                    ),
-                    child: Center(
-                      child: FittedBox(
-                        fit: BoxFit.contain,
-                        child: Padding(
-                          padding: EdgeInsets.all(20),
-                          child: Text(
-                            "ZAKAT",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green[400],
-                              fontSize: 70,
-                            ),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 40, vertical: 40),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "Purify • Grow • Share",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w300,
+                        ),
+                      ),
+                      SizedBox(height: 30),
+                      GestureDetector(
+                        onTap: _isCalculating ? null : _onCalculatePressed,
+                        child: AnimatedContainer(
+                          duration: Duration(milliseconds: 300),
+                          width: _isCalculating ? 60 : 200,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 10,
+                                offset: Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: _isCalculating
+                                ? CircularProgressIndicator(
+                                    color: Colors.green.shade400)
+                                : Text(
+                                    "Calculate",
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.green.shade400,
+                                    ),
+                                  ),
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
-              ),
-              Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
-                child: Material(
-                  color: Color.fromARGB(255, 236, 200, 81),
-                  borderRadius: BorderRadius.circular(changedButton ? 60 : 12),
-                  child: InkWell(
-                    onTap: () async {
-                      setState(() {
-                        changedButton = true;
-                      });
-                      await Future.delayed(Duration(seconds: 1));
-                      Navigator.pushNamed(context, MyRoutes.SelectedRoute);
-                    },
-                    child: AnimatedContainer(
-                      duration: Duration(milliseconds: 500),
-                      width: changedButton ? 60 : 160,
-                      height: 60,
-                      alignment: Alignment.center,
-                      child: changedButton
-                          ? Icon(Icons.calculate, color: Colors.white)
-                          : Text(
-                              "Calculate",
-                              style: TextStyle(
-                                fontSize: 26,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
+}
+
+class AbstractBackgroundPainter extends CustomPainter {
+  final Animation<double> animation;
+
+  AbstractBackgroundPainter(this.animation) : super(repaint: animation);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.05)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+
+    for (var i = 0; i < 5; i++) {
+      final progress = (animation.value + i / 5) % 1.0;
+      final center = Offset(size.width / 2, size.height / 2);
+      final radius = size.width * (0.2 + progress * 0.8);
+
+      Path path = Path()
+        ..addOval(Rect.fromCircle(center: center, radius: radius))
+        ..addOval(Rect.fromCircle(center: center, radius: radius * 0.8));
+
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
+}
+
+class ZakatSymbolPainter extends CustomPainter {
+  final Animation<double> animation;
+
+  ZakatSymbolPainter(this.animation) : super(repaint: animation);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+
+    // Draw crescent
+    final crescentPath = Path()
+      ..addArc(Rect.fromCircle(center: center, radius: radius), math.pi / 6,
+          math.pi * 3 / 2)
+      ..arcTo(Rect.fromCircle(center: center, radius: radius * 0.7),
+          math.pi * 5 / 3, -math.pi * 3 / 2, false);
+
+    // Draw giving hand
+    final handPath = Path()
+      ..moveTo(center.dx - radius * 0.3, center.dy + radius * 0.5)
+      ..quadraticBezierTo(center.dx, center.dy + radius * 0.7,
+          center.dx + radius * 0.3, center.dy + radius * 0.5)
+      ..quadraticBezierTo(center.dx + radius * 0.1, center.dy + radius * 0.3,
+          center.dx - radius * 0.1, center.dy + radius * 0.4);
+
+    final progress = animation.value;
+    PathMetric crescentMetric = crescentPath.computeMetrics().first;
+    Path animatedCrescent =
+        crescentMetric.extractPath(0, crescentMetric.length * progress);
+
+    PathMetric handMetric = handPath.computeMetrics().first;
+    Path animatedHand = handMetric.extractPath(0, handMetric.length * progress);
+
+    canvas.drawPath(animatedCrescent, paint);
+    canvas.drawPath(animatedHand, paint);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
 }
