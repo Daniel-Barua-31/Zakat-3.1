@@ -21,9 +21,13 @@ class _IntroPageState extends State<IntroPage>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(seconds: 5),
+      duration: const Duration(seconds: 2),
       vsync: this,
-    )..repeat();
+    )..forward();
+
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {}
+    });
   }
 
   @override
@@ -69,16 +73,21 @@ class _IntroPageState extends State<IntroPage>
                             painter: ZakatSymbolPainter(_controller),
                           ),
                         ),
-                        SizedBox(height: 20),
-                        // Zakat text
-                        Text(
-                          "ZAKAT",
-                          style: TextStyle(
-                            fontWeight: FontWeight.w300,
-                            color: Colors.white,
-                            fontSize: 36,
-                            letterSpacing: 8,
-                          ),
+                        SizedBox(height: 50),
+                        // Zakat text letter by letter
+                        AnimatedBuilder(
+                          animation: _controller,
+                          builder: (context, child) {
+                            return Text(
+                              _getAnimatedText(),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w300,
+                                color: Colors.white,
+                                fontSize: 36,
+                                letterSpacing: 8,
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -131,6 +140,23 @@ class _IntroPageState extends State<IntroPage>
                           ),
                         ),
                       ),
+                      SizedBox(height: 20), // Add space between button and text
+                      Text(
+                        "Powered By",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w400,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        "Since 2000",
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFFFF7F8),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -140,6 +166,13 @@ class _IntroPageState extends State<IntroPage>
         ],
       ),
     );
+  }
+
+  // Helper function to get the animated text
+  String _getAnimatedText() {
+    const word = "ZAKAT";
+    int letterCount = (word.length * _controller.value).floor();
+    return word.substring(0, math.min(letterCount, word.length));
   }
 }
 
@@ -182,36 +215,61 @@ class ZakatSymbolPainter extends CustomPainter {
     final paint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
+      ..strokeWidth = 1;
 
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2;
+    final width = size.width * 0.6; // Adjust width for the "Z"
+    final height = size.height * 0.6; // Adjust height for the "Z"
+    const gap = 20.0; // Distance between the "Z" and the circle
 
-    // Draw crescent
-    final crescentPath = Path()
-      ..addArc(Rect.fromCircle(center: center, radius: radius), math.pi / 6,
-          math.pi * 3 / 2)
-      ..arcTo(Rect.fromCircle(center: center, radius: radius * 0.7),
-          math.pi * 5 / 3, -math.pi * 3 / 2, false);
+    // Draw the "Z" path
+    final zPath = Path()
+      ..moveTo(center.dx - width / 2, center.dy - height / 2) // Top left
+      ..lineTo(center.dx + width / 2, center.dy - height / 2) // Top right
+      ..lineTo(center.dx - width / 2, center.dy + height / 2) // Bottom left
+      ..lineTo(center.dx + width / 2, center.dy + height / 2); // Bottom right
 
-    // Draw giving hand
-    final handPath = Path()
-      ..moveTo(center.dx - radius * 0.3, center.dy + radius * 0.5)
-      ..quadraticBezierTo(center.dx, center.dy + radius * 0.7,
-          center.dx + radius * 0.3, center.dy + radius * 0.5)
-      ..quadraticBezierTo(center.dx + radius * 0.1, center.dy + radius * 0.3,
-          center.dx - radius * 0.1, center.dy + radius * 0.4);
+    // Compute the progress of the Z path animation
+    final progress = math.min(
+        animation.value * 2, 1.0); // Z path animation progresses until halfway
 
-    final progress = animation.value;
-    PathMetric crescentMetric = crescentPath.computeMetrics().first;
-    Path animatedCrescent =
-        crescentMetric.extractPath(0, crescentMetric.length * progress);
+    PathMetric zMetric = zPath.computeMetrics().first;
+    Path animatedZ = zMetric.extractPath(0, zMetric.length * progress);
 
-    PathMetric handMetric = handPath.computeMetrics().first;
-    Path animatedHand = handMetric.extractPath(0, handMetric.length * progress);
+    // Always draw the Z completely when the animation finishes
+    if (progress == 1.0) {
+      canvas.drawPath(zPath, paint); // Draw full Z when animation completes
+    } else {
+      canvas.drawPath(animatedZ, paint); // Draw animated Z path
+    }
 
-    canvas.drawPath(animatedCrescent, paint);
-    canvas.drawPath(animatedHand, paint);
+    // If the animation has passed the halfway point, start drawing the circle in a counterclockwise direction
+    if (animation.value > 0.5) {
+      final circleProgress = (animation.value - 0.5) *
+          2; // Circle starts at 50% of animation duration
+      final radius = math.min(size.width, size.height) * 0.5 +
+          gap; // Circle radius with gap
+      final circlePath = Path()
+        ..addArc(
+            Rect.fromCircle(center: center, radius: radius),
+            math.pi / 6, // Starting angle
+            -math.pi *
+                2 *
+                circleProgress); // Negative sweep for counterclockwise
+
+      // Always draw the full circle when the animation completes
+      if (circleProgress == 1.0) {
+        canvas.drawArc(
+            Rect.fromCircle(center: center, radius: radius),
+            math.pi / 6,
+            -math.pi * 2,
+            false,
+            paint); // Draw full circle in counterclockwise
+      } else {
+        canvas.drawPath(circlePath,
+            paint); // Draw animated circle path in counterclockwise direction
+      }
+    }
   }
 
   @override
