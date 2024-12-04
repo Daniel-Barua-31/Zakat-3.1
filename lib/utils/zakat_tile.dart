@@ -90,7 +90,7 @@ class ZakatTile extends StatelessWidget {
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   ),
                   child: const Text(
-                    'Edit',
+                    'View',
                     style: TextStyle(color: Colors.white),
                   ),
                 ),

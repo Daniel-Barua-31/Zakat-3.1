@@ -80,7 +80,6 @@ class _MainPageState extends State<MainPage> {
       ),
     ];
 
-    // Define the background color based on the selected index
     Color backgroundColor = Colors.white;
     Color navBarColor = Colors.green.shade400;
     Color navBarBackgroundColor = Colors.green.shade400;
@@ -112,9 +111,9 @@ class _MainPageState extends State<MainPage> {
             tabBackgroundColor: _selectedIndex == 3 || _selectedIndex == 4
                 ? Colors.blue.shade300
                 : Colors.green.shade300,
-            tabBorderRadius: 18.0,
-            gap: 18,
-            padding: const EdgeInsets.all(16),
+            tabBorderRadius: 10.0,
+            gap: 10,
+            padding: const EdgeInsets.all(8),
             selectedIndex: _selectedIndex,
             onTabChange: (index) {
               setState(() {
@@ -125,22 +124,27 @@ class _MainPageState extends State<MainPage> {
               GButton(
                 icon: Icons.calculate,
                 text: 'Calculate',
+                textStyle: TextStyle(fontSize: 8),
               ),
               GButton(
                 icon: Icons.save,
                 text: 'Save',
+                textStyle: TextStyle(fontSize: 8),
               ),
               GButton(
                 icon: Icons.volunteer_activism,
                 text: 'Donation',
+                textStyle: TextStyle(fontSize: 8),
               ),
               GButton(
                 icon: Icons.request_page,
                 text: 'Advance',
+                textStyle: TextStyle(fontSize: 8),
               ),
               GButton(
                 icon: Icons.history_edu,
                 text: 'History',
+                textStyle: TextStyle(fontSize: 8),
               )
             ],
           ),

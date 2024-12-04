@@ -1,5 +1,4 @@
 // ignore_for_file: prefer_const_constructors, prefer_conditional_assignment
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
@@ -57,7 +56,7 @@ class _HomePageState extends State<HomePage> {
   double? assetsTotal;
   double? expenseTotal;
   double? zakat;
-  bool isLoading = false;
+  bool isLoading = true;
   bool isZakatEligible = true;
 
   late String _selectedCurrency;
@@ -79,17 +78,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<double> fetchUsdToCurrencyRate(
-      String apiKey, String targetedCurrency) async {
+    String apiKey, String targetedCurrency) async {
     final String url = 'https://v6.exchangerate-api.com/v6/$apiKey/latest/USD';
-
     final response = await http.get(Uri.parse(url));
-
     if (response.statusCode == 200) {
       final Map<String, dynamic> data = jsonDecode(response.body);
       var rate = data['conversion_rates'][targetedCurrency];
-
       double usdToBdt = (rate is int) ? rate.toDouble() : rate;
-
       return usdToBdt;
     } else {
       throw Exception('Failed to load exchange rates');
@@ -106,7 +101,6 @@ class _HomePageState extends State<HomePage> {
 
     if (response.statusCode == 200) {
       var jsonData = jsonDecode(response.body);
-
       if (jsonData.containsKey('price_gram_24k')) {
         double goldPrice24k = jsonData['price_gram_24k'];
         print('24k Gold price per gram: $goldPrice24k');
@@ -117,7 +111,7 @@ class _HomePageState extends State<HomePage> {
       }
     } else if (response.statusCode == 403) {
       print("Error: 403 Forbidden. Returning default gold price.");
-      return 80.96;
+      return 85.40;
     } else {
       print("Error: ${response.statusCode}");
       throw Exception("Failed to fetch gold price");
@@ -160,7 +154,6 @@ class _HomePageState extends State<HomePage> {
         return 120.0;
       case 'EUR':
         return 0.90;
-      // Add more currencies as needed
       default:
         throw Exception('Unsupported currency: $selectedCurrency');
     }
@@ -171,28 +164,23 @@ class _HomePageState extends State<HomePage> {
       isLoading = true;
     });
 
-    // const String apiKey = 'a15d03e2fb2667c30d398e6d';
+    const String apiKey = 'a15d03e2fb2667c30d398e6d';
 
-    // double currency = await fetchUsdToCurrencyRate(apiKey, selectedCurrency!);
-    double currency = await getManualCurrencyRate(selectedCurrency!);
+    double currency = await fetchUsdToCurrencyRate(apiKey, selectedCurrency!);
+    // double currency = await getManualCurrencyRate(selectedCurrency!);
 
-    print('calculate Zakat: $selectedCurrency');
+    // print('calculate Zakat: $selectedCurrency');
 
     try {
       double res2 = assetsTotal! - expenseTotal!;
-      // double targetGoldPrice = await getGoldPrice();
-      double targetGoldPrice = 80.96;
+      double targetGoldPrice = await getGoldPrice();
+      // double targetGoldPrice = 88.15;
       double validGoldPrice = targetGoldPrice * 87.48 * currency;
-      // double targetSilverPrice = await getSilverPrice();
-      double targetSilverPrice = 0.92;
+      double targetSilverPrice = await getSilverPrice();
+      // double targetSilverPrice = 1.06;
       double validSilverPrice = targetSilverPrice * 612.36 * currency;
-
       totalAssets();
       totalExpenses();
-
-      // print("612.36 gram Silver Price: $validSilverPrice");
-      // print("87.48 gram Gold Price  : $validGoldPrice");
-
       double zakatAmount = 0;
       bool isEligible = false;
 
@@ -249,6 +237,12 @@ class _HomePageState extends State<HomePage> {
       _loadEditData();
     }
     _addListenersToControllers();
+
+    Future.delayed(Duration(seconds: 5), () {
+      setState(() {
+        isLoading = false;
+      });
+    });
   }
 
   void _addListenersToControllers() {
@@ -325,7 +319,6 @@ class _HomePageState extends State<HomePage> {
       _moneyOwed.text = widget.editData!['moneyOwed']?.toString() ?? '';
       _goods.text = widget.editData!['goods']?.toString() ?? '';
       _othersAssets.text = widget.editData!['othersAssets']?.toString() ?? '';
-
       _expenses.text = widget.editData!['expense']?.toString() ?? '';
       _shortTermDebts.text =
           widget.editData!['shortTermDebts']?.toString() ?? '';
@@ -337,9 +330,7 @@ class _HomePageState extends State<HomePage> {
       expenseTotal = widget.editData!['expenses'] ?? 0.0;
       // zakat = widget.editData!['zakat'] ?? 0.0;
     });
-    // _calculateZakat();
     calculateZakat();
-
     _updateTotals();
   }
 
@@ -386,7 +377,6 @@ class _HomePageState extends State<HomePage> {
             initialZakatData: zakatData,
             editIndex: widget.editMode ? widget.editData!['editIndex'] : null,
           ),
-          // settings: RouteSettings(arguments: zakatData),// recent commented!
         ),
       );
     } else {
@@ -453,7 +443,6 @@ class _HomePageState extends State<HomePage> {
           ),
         );
       }
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Calculation saved successfully!'),
@@ -894,7 +883,7 @@ class _HomePageState extends State<HomePage> {
                         ? "Loading..."
                         : isZakatEligible
                             ? "${zakat?.toStringAsFixed(2) ?? '0.00'} $selectedCurrency"
-                            : "You don't have to pay Zakat!!",
+                            : "NOT ELIGIBLE FOR ZAKAT",
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -978,26 +967,6 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ),
-
-                // GestureDetector(
-                //   onTap: _zakatProcess,
-                //   child: Container(
-                //     padding: EdgeInsets.all(12),
-                //     decoration: BoxDecoration(
-                //         color: Color.fromARGB(255, 236, 200, 81),
-                //         borderRadius: BorderRadius.circular(12)),
-                //     child: Center(
-                //       child: Text(
-                //         "Procecs",
-                //         style: TextStyle(
-                //           fontSize: 20,
-                //           fontWeight: FontWeight.bold,
-                //           color: Colors.white,
-                //         ),
-                //       ),
-                //     ),
-                //   ),
-                // ),
                 SizedBox(
                   height: 20,
                 ),

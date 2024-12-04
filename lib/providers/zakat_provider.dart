@@ -4,8 +4,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 class ZakatProvider extends ChangeNotifier {
   late Box<Map> _box;
   late Box<Map> _advanceDonationBox;
-  List<Map<String, dynamic>> _zakatData = [];
-  List<Map<String, dynamic>> _advanceDonationData = [];
+  List<Map<String, dynamic>> _zakatData = []; // Zakat Calculation Data
+  List<Map<String, dynamic>> _advanceDonationData = []; // Advance Donation Data
   bool _isLoading = true;
 
   List<Map<String, dynamic>> get zakatData => _zakatData;
