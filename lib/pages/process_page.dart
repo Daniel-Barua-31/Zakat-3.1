@@ -53,7 +53,7 @@ class _ProcessPageState extends State<ProcessPage> {
     _initializeData();
     _updateCalculations();
     _updateAvailableSessionYears();
-    _printSomething();
+    
   } // recent added! 10 PM
 
   void _generateSessionYears() {
@@ -119,10 +119,6 @@ class _ProcessPageState extends State<ProcessPage> {
     }
 
     return totalAmount;
-  }
-
-  void _printSomething() {
-    // double s = getAdvanceDonationAmount(session);
   }
 
   void _updateAvailableSessionYears() {
@@ -233,17 +229,12 @@ class _ProcessPageState extends State<ProcessPage> {
       final previousSessionYear =
           (int.parse(currentSessionYear) - 1).toString();
       final previousSession = '$previousSessionYear-$currentSessionYear';
-
       double previousAdvance = _getPreviousSessionAdvance(previousSession);
       double currentAdvanceDonation = getAdvanceDonationAmount(dropdownValue!);
-
       String targetCurrency = _getCurrency();
-
-      // Convert previous advance to target currency
       previousSessionAdvance = convertCurrency(previousAdvance,
               _getPreviousSessionCurrency(previousSession), targetCurrency) +
           currentAdvanceDonation;
-
       print("_check previous : $previousSessionAdvance");
     } else {
       previousSessionAdvance = 0.0;
@@ -301,7 +292,7 @@ class _ProcessPageState extends State<ProcessPage> {
         advance = (existingData['advance'] as num?)?.toDouble() ?? 0.0;
       }
     }
-  } // recent added! 10 PM
+  }
 
   void _loadInitialData() {
     if (widget.initialZakatData!.containsKey('entries')) {

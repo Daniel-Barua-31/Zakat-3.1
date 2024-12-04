@@ -20,7 +20,7 @@ class ZakatTile extends StatelessWidget {
     this.onEdit,
     this.onDelete,
   });
-
+  
   @override
   Widget build(BuildContext context) {
     return Padding(
